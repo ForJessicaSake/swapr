@@ -8,13 +8,24 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Swapr",
-  description: "Multi-currency FX wallet",
+  description: "Hold, track and swap currencies with confidence.",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
-    <html lang="en">
-      <body className="min-h-screen bg-white text-neutral-900 antialiased">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('swapr-theme');if(t==='dark'||(t!=='light'&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.classList.add('dark')}catch(e){}})();`,
+          }}
+        />
+      </head>
+      <body className="min-h-screen bg-canvas text-ink antialiased">
         <Providers>
           {children}
           <Suspense fallback={null}>

@@ -2,12 +2,12 @@
 
 import { useQuery } from "@tanstack/react-query";
 
-import { getConversions } from "@/lib/api/conversions";
-import { queryKeys } from "@/lib/query-keys";
+import { DEMO_CONVERSIONS } from "@/lib/demo-data";
+import { QueryKey, QUERY_KEYS } from "@/types/query-keys";
 
 export function useConversions() {
   return useQuery({
-    queryKey: queryKeys.conversions,
-    queryFn: getConversions,
+    queryKey: QUERY_KEYS[QueryKey.Conversions],
+    queryFn: async () => DEMO_CONVERSIONS,
   });
 }

@@ -1,4 +1,31 @@
+import { getQuoteRemainingMs, isQuoteExpired } from "@/utils/quote";
+
 describe("quote expiry", () => {
-  it.todo("measures remaining time from expiresAt and the server clock offset");
-  it.todo("treats a quote as expired when server time is past expiresAt");
+  const serverTime = "2026-09-24T10:15:05.000Z";
+  const expiresAt = "2026-09-24T10:15:35.000Z";
+  const clientReceivedAt = new Date("2026-09-24T09:15:05.000Z").getTime();
+
+  it("measures remaining time using the server clock offset", () => {
+    const tenSecondsLater = clientReceivedAt + 10_000;
+    expect(
+      getQuoteRemainingMs(
+        expiresAt,
+        serverTime,
+        tenSecondsLater,
+        clientReceivedAt,
+      ),
+    ).toBe(20_000);
+  });
+
+  it("treats a quote as expired after the server expiry time", () => {
+    const thirtySecondsLater = clientReceivedAt + 30_000;
+    expect(
+      isQuoteExpired(
+        expiresAt,
+        serverTime,
+        thirtySecondsLater,
+        clientReceivedAt,
+      ),
+    ).toBe(true);
+  });
 });

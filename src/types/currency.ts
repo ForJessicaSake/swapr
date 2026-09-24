@@ -1,6 +1,6 @@
 import type { CurrencyCode } from "@/constants/currencies";
 
-export type Money = {
+export type MoneyAmount = {
   currency: CurrencyCode;
   amount: string;
 };
