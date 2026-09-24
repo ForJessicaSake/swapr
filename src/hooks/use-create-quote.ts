@@ -2,11 +2,11 @@
 
 import { useMutation } from "@tanstack/react-query";
 
-export function useConvert() {
+export function useCreateQuote() {
   return useMutation({
     mutationFn: async (request: unknown) => {
       void request;
-      throw new Error("Conversions API is not connected yet.");
+      throw new Error("Quotes API is not connected yet.");
     },
   });
 }

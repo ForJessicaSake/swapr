@@ -1,19 +1,26 @@
 export function getQuoteRemainingMs(
   expiresAt: string,
   serverTime: string,
-  now: number,
+  currentTimeMs: number,
+  clientReceivedAt = currentTimeMs,
 ): number {
-  throw new Error(
-    `Not implemented: getQuoteRemainingMs(${expiresAt}, ${serverTime}, ${now})`,
-  );
+  const serverOffset = new Date(serverTime).getTime() - clientReceivedAt;
+  const estimatedServerNow = currentTimeMs + serverOffset;
+  return Math.max(0, new Date(expiresAt).getTime() - estimatedServerNow);
 }
 
 export function isQuoteExpired(
   expiresAt: string,
   serverTime: string,
-  now: number,
+  currentTimeMs: number,
+  clientReceivedAt = currentTimeMs,
 ): boolean {
-  throw new Error(
-    `Not implemented: isQuoteExpired(${expiresAt}, ${serverTime}, ${now})`,
+  return (
+    getQuoteRemainingMs(
+      expiresAt,
+      serverTime,
+      currentTimeMs,
+      clientReceivedAt,
+    ) <= 0
   );
 }

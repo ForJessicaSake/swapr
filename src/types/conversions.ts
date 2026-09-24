@@ -1,5 +1,5 @@
 import type { CurrencyCode } from "@/constants/currencies";
-import type { Money } from "@/types/currency";
+import type { MoneyAmount } from "@/types/currency";
 
 export type CreateConversionRequest = {
   quoteId: string;
@@ -15,7 +15,7 @@ export type Conversion = {
   buyCurrency: CurrencyCode;
   buyAmount: string;
   rate: string;
-  fee: Money;
+  fee: MoneyAmount;
   createdAt: string;
 };
 
