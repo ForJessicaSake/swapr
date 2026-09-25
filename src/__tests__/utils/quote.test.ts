@@ -17,13 +17,23 @@ describe("quote expiry", () => {
     ).toBe(20_000);
   });
 
-  it("treats a quote as expired after the server expiry time", () => {
-    const thirtySecondsLater = clientReceivedAt + 30_000;
+  it("is still live before the server expiry time", () => {
     expect(
       isQuoteExpired(
         expiresAt,
         serverTime,
-        thirtySecondsLater,
+        clientReceivedAt + 29_000,
+        clientReceivedAt,
+      ),
+    ).toBe(false);
+  });
+
+  it("treats a quote as expired after the server expiry time", () => {
+    expect(
+      isQuoteExpired(
+        expiresAt,
+        serverTime,
+        clientReceivedAt + 30_000,
         clientReceivedAt,
       ),
     ).toBe(true);

@@ -37,6 +37,7 @@ import {
   convertBuyToSell,
   convertSellToBuy,
 } from "@/utils/money";
+import { getQuoteRemainingMs } from "@/utils/quote";
 
 type AmountMode = "sell" | "buy";
 
@@ -159,11 +160,11 @@ export function ConvertForm() {
   };
 
   const remainingLockMs = quote
-    ? Math.max(
-        0,
-        new Date(quote.expiresAt).getTime() -
-          new Date(quote.serverTime).getTime() -
-          (currentTimeMs - quoteReceivedAt),
+    ? getQuoteRemainingMs(
+        quote.expiresAt,
+        quote.serverTime,
+        currentTimeMs,
+        quoteReceivedAt,
       )
     : 0;
   const hasQuoteExpired = Boolean(quote && remainingLockMs <= 0);
@@ -484,6 +485,11 @@ export function ConvertForm() {
                 hasQuoteExpired ? "bg-amber-soft" : "bg-green-soft"
               }`}
             >
+              {hasQuoteExpired && (
+                <p className="sr-only">
+                  Your quote has expired. Request a new one.
+                </p>
+              )}
               <div className="flex items-center justify-between gap-4">
                 <div
                   className={`text-xs font-semibold ${

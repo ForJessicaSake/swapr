@@ -2,11 +2,11 @@
 
 import { useMutation } from "@tanstack/react-query";
 
+import { createQuote } from "@/lib/api/quotes";
+import type { CreateQuoteRequest } from "@/types/quotes";
+
 export function useCreateQuote() {
   return useMutation({
-    mutationFn: async (request: unknown) => {
-      void request;
-      throw new Error("Quotes API is not connected yet.");
-    },
+    mutationFn: (request: CreateQuoteRequest) => createQuote(request),
   });
 }
