@@ -3,10 +3,10 @@
 import {
   createContext,
   createElement,
+  useCallback,
   useContext,
-  useEffect,
   useMemo,
-  useState,
+  useSyncExternalStore,
   type ReactNode,
 } from "react";
 
@@ -21,6 +21,9 @@ type ThemeContextValue = {
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
+let currentTheme: ColorTheme = "light";
+const listeners = new Set<() => void>();
+
 function readStoredTheme(): ColorTheme {
   const stored = window.localStorage.getItem(THEME_STORAGE_KEY);
   if (stored === "dark" || stored === "light") return stored;
@@ -33,26 +36,48 @@ function applyTheme(theme: ColorTheme) {
   document.documentElement.classList.toggle("dark", theme === "dark");
 }
 
-export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setTheme] = useState<ColorTheme>("light");
+function emitTheme() {
+  listeners.forEach((listener) => listener());
+}
 
-  useEffect(() => {
-    const nextTheme = readStoredTheme();
+function subscribeToTheme(onStoreChange: () => void) {
+  currentTheme = readStoredTheme();
+  applyTheme(currentTheme);
+  listeners.add(onStoreChange);
+  return () => {
+    listeners.delete(onStoreChange);
+  };
+}
+
+function getThemeSnapshot() {
+  return currentTheme;
+}
+
+function getServerThemeSnapshot(): ColorTheme {
+  return "light";
+}
+
+export function ThemeProvider({ children }: { children: ReactNode }) {
+  const theme = useSyncExternalStore(
+    subscribeToTheme,
+    getThemeSnapshot,
+    getServerThemeSnapshot,
+  );
+
+  const toggleTheme = useCallback(() => {
+    const nextTheme: ColorTheme = currentTheme === "dark" ? "light" : "dark";
+    currentTheme = nextTheme;
+    window.localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
     applyTheme(nextTheme);
-    setTheme(nextTheme);
+    emitTheme();
   }, []);
 
   const value = useMemo(
     () => ({
       theme,
-      toggleTheme: () => {
-        const nextTheme: ColorTheme = theme === "dark" ? "light" : "dark";
-        window.localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
-        applyTheme(nextTheme);
-        setTheme(nextTheme);
-      },
+      toggleTheme,
     }),
-    [theme],
+    [theme, toggleTheme],
   );
 
   return createElement(ThemeContext.Provider, { value }, children);

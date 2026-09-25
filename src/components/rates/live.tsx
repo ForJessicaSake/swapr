@@ -10,7 +10,9 @@ import {
 } from "@/constants/currencies";
 import { RATE_STALE_AFTER_MS } from "@/constants/timings";
 import { useCurrentTime } from "@/hooks/use-current-time";
+import { useRateHistory } from "@/hooks/use-rate-history";
 import { useRates } from "@/hooks/use-rates";
+import { RateSparkline } from "@/components/rates/sparkline";
 import { Button } from "@/components/ui/button";
 import { Icon, type IconName } from "@/components/ui/icon";
 import { Select } from "@/components/ui/select";
@@ -93,6 +95,73 @@ function RateDirection({
     >
       <Icon name={style.icon} size={16} strokeWidth={2.2} />
     </span>
+  );
+}
+
+function RatesTable({
+  baseCurrency,
+  snapshot,
+  skipFailedPoll,
+  visibleCurrencies,
+  rateDirections,
+}: {
+  baseCurrency: CurrencyCode;
+  snapshot: NonNullable<ReturnType<typeof useRates>["data"]>;
+  skipFailedPoll: boolean;
+  visibleCurrencies: CurrencyCode[];
+  rateDirections: Partial<Record<CurrencyCode, RateDirection>>;
+}) {
+  const rateHistory = useRateHistory(baseCurrency, snapshot, skipFailedPoll);
+
+  return (
+    <div className="divide-y divide-line">
+      {visibleCurrencies.map((currency) => {
+        const rate = snapshot.rates[currency];
+        const direction = rateDirections[currency] ?? {
+          movement: "same" as const,
+          changePercent: 0,
+        };
+
+        return (
+          <div
+            className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 px-5 py-3.5 sm:px-6"
+            key={currency}
+          >
+            <div className="flex min-w-0 items-center gap-3">
+              <span className="grid size-9 shrink-0 place-items-center rounded-full bg-surface-muted text-sm font-semibold text-ink-soft">
+                {CURRENCY_SYMBOLS[currency]}
+              </span>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-ink">
+                  {baseCurrency}/{currency}
+                </p>
+                <p className="truncate text-[11px] text-muted">
+                  {CURRENCY_NAMES[currency]}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-2 sm:gap-3">
+              {rate ? (
+                <span
+                  className={classNames(
+                    RATE_DIRECTION_STYLE[direction.movement].className,
+                  )}
+                >
+                  <RateSparkline
+                    label={`${baseCurrency} to ${currency} over recent updates`}
+                    rates={rateHistory[currency] ?? [rate]}
+                  />
+                </span>
+              ) : null}
+              <p className="money text-[15px] font-semibold tabular-nums text-ink">
+                {rate ? formatRate(rate) : "—"}
+              </p>
+              <RateDirection direction={direction} />
+            </div>
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
@@ -197,42 +266,14 @@ export function LiveRates({
           ))}
         </div>
       ) : ratesQuery.data ? (
-        <div className="divide-y divide-line">
-          {visibleCurrencies.map((currency) => {
-            const rate = ratesQuery.data.rates[currency];
-            const direction = rateDirections[currency] ?? {
-              movement: "same" as const,
-              changePercent: 0,
-            };
-
-            return (
-              <div
-                className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 px-5 py-3.5 sm:px-6"
-                key={currency}
-              >
-                <div className="flex min-w-0 items-center gap-3">
-                  <span className="grid size-9 shrink-0 place-items-center rounded-full bg-surface-muted text-sm font-semibold text-ink-soft">
-                    {CURRENCY_SYMBOLS[currency]}
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-ink">
-                      {baseCurrency}/{currency}
-                    </p>
-                    <p className="truncate text-[11px] text-muted">
-                      {CURRENCY_NAMES[currency]}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center justify-end gap-2">
-                  <p className="money text-[15px] font-semibold tabular-nums text-ink">
-                    {rate ? formatRate(rate) : "—"}
-                  </p>
-                  <RateDirection direction={direction} />
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        <RatesTable
+          baseCurrency={baseCurrency}
+          key={baseCurrency}
+          rateDirections={rateDirections}
+          skipFailedPoll={ratesQuery.isError}
+          snapshot={ratesQuery.data}
+          visibleCurrencies={visibleCurrencies}
+        />
       ) : (
         <div className="px-5 py-10 text-center sm:px-6">
           <p className="text-sm font-medium text-ink">

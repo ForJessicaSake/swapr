@@ -1,28 +1,51 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useId, useState, type ReactNode } from "react";
 
-import { ConvertForm } from "@/components/convert/form";
-import { ConversionHistory } from "@/components/history/list";
-import { LiveRates } from "@/components/rates/live";
+import { Button } from "@/components/ui/button";
 import { Icon, type IconName } from "@/components/ui/icon";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
-import { WalletOverview } from "@/components/wallet/overview";
+import {
+  hrefWithDebug,
+  ROUTES,
+  screenFromPathname,
+  type AppScreen,
+} from "@/constants/routes";
 import { classNames } from "@/utils/class-names";
-
-type AppScreen = "overview" | "convert" | "rates" | "transactions";
 
 const NAV_ITEMS: Array<{
   id: AppScreen;
+  href: string;
   label: string;
   icon: IconName;
   group: string;
 }> = [
-  { id: "overview", label: "Overview", icon: "home", group: "Wallet" },
-  { id: "convert", label: "Convert", icon: "swap", group: "Exchange" },
-  { id: "rates", label: "Live rates", icon: "activity", group: "Exchange" },
+  {
+    id: "overview",
+    href: ROUTES.overview,
+    label: "Overview",
+    icon: "home",
+    group: "Wallet",
+  },
+  {
+    id: "convert",
+    href: ROUTES.convert,
+    label: "Convert",
+    icon: "swap",
+    group: "Exchange",
+  },
+  {
+    id: "rates",
+    href: ROUTES.rates,
+    label: "Live rates",
+    icon: "activity",
+    group: "Exchange",
+  },
   {
     id: "transactions",
+    href: ROUTES.transactions,
     label: "Transactions",
     icon: "history",
     group: "Records",
@@ -47,6 +70,8 @@ const SCREEN_COPY: Record<AppScreen, { title: string; description: string }> = {
     description: "Every completed conversion, in one place.",
   },
 };
+
+const NAV_GROUPS = ["Wallet", "Exchange", "Records"];
 
 function SwaprLogo({ onLight = false }: { onLight?: boolean }) {
   return (
@@ -76,76 +101,140 @@ function SwaprLogo({ onLight = false }: { onLight?: boolean }) {
   );
 }
 
-export function AppShell() {
-  const [activeScreen, setActiveScreen] = useState<AppScreen>("overview");
+function SidebarNav({
+  activeScreen,
+  hrefFor,
+  onNavigate,
+}: {
+  activeScreen: AppScreen;
+  hrefFor: (path: string) => string;
+  onNavigate: () => void;
+}) {
+  return (
+    <>
+      <div className="px-2">
+        <Link href={hrefFor(ROUTES.overview)} onClick={onNavigate}>
+          <SwaprLogo />
+        </Link>
+      </div>
+
+      <nav aria-label="Primary navigation" className="mt-10 flex-1">
+        {NAV_GROUPS.map((group) => (
+          <div className="mb-7" key={group}>
+            <p className="mb-2 px-3 text-[10px] font-semibold tracking-[0.12em] text-white/35 uppercase">
+              {group}
+            </p>
+            <div className="space-y-1">
+              {NAV_ITEMS.filter((item) => item.group === group).map((item) => (
+                <Link
+                  className={classNames(
+                    "nav-link flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium",
+                    activeScreen === item.id
+                      ? "is-active bg-white/10 text-white shadow-[inset_3px_0_0_var(--blue)]"
+                      : "text-white/50",
+                  )}
+                  href={hrefFor(item.href)}
+                  key={item.id}
+                  onClick={onNavigate}
+                >
+                  <Icon name={item.icon} size={18} />
+                  {item.label}
+                </Link>
+              ))}
+            </div>
+          </div>
+        ))}
+      </nav>
+
+      <div className="mt-auto border-t border-white/10 pt-4">
+        <ThemeToggle appearance="sidebar" />
+      </div>
+    </>
+  );
+}
+
+export function AppShell({ children }: { children: ReactNode }) {
+  const menuId = useId();
+  const pathname = usePathname();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const activeScreen = screenFromPathname(pathname);
+  const hrefFor = (path: string) =>
+    hrefWithDebug(path, searchParams.get("debug"));
 
   useEffect(() => {
-    const syncHash = () => {
-      const nextScreen = window.location.hash.slice(1) as AppScreen;
-      if (NAV_ITEMS.some((item) => item.id === nextScreen)) {
-        setActiveScreen(nextScreen);
-      }
+    if (!isMenuOpen) return;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setIsMenuOpen(false);
     };
-    syncHash();
-    window.addEventListener("hashchange", syncHash);
-    return () => window.removeEventListener("hashchange", syncHash);
-  }, []);
+    document.addEventListener("keydown", onKeyDown);
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isMenuOpen]);
 
-  const navigateToScreen = (nextScreen: AppScreen) => {
-    setActiveScreen(nextScreen);
-    window.history.replaceState(null, "", `#${nextScreen}`);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-
-  const navGroups = ["Wallet", "Exchange", "Records"];
+  const closeMenu = () => setIsMenuOpen(false);
   const copy = SCREEN_COPY[activeScreen];
 
   return (
     <div className="min-h-screen lg:grid lg:grid-cols-[248px_minmax(0,1fr)]">
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-[248px] flex-col bg-nav px-4 py-6 lg:flex">
-        <div className="px-2">
-          <SwaprLogo />
-        </div>
-
-        <nav aria-label="Primary navigation" className="mt-10 flex-1">
-          {navGroups.map((group) => (
-            <div className="mb-7" key={group}>
-              <p className="mb-2 px-3 text-[10px] font-semibold tracking-[0.12em] text-white/35 uppercase">
-                {group}
-              </p>
-              <div className="space-y-1">
-                {NAV_ITEMS.filter((item) => item.group === group).map(
-                  (item) => (
-                    <button
-                      className={classNames(
-                        "nav-link flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium",
-                        activeScreen === item.id
-                          ? "is-active bg-white/10 text-white shadow-[inset_3px_0_0_var(--blue)]"
-                          : "text-white/50",
-                      )}
-                      key={item.id}
-                      onClick={() => navigateToScreen(item.id)}
-                      type="button"
-                    >
-                      <Icon name={item.icon} size={18} />
-                      {item.label}
-                    </button>
-                  ),
-                )}
-              </div>
-            </div>
-          ))}
-        </nav>
-
-        <div className="mt-auto border-t border-white/10 pt-4">
-          <ThemeToggle appearance="sidebar" />
-        </div>
+        <SidebarNav
+          activeScreen={activeScreen}
+          hrefFor={hrefFor}
+          onNavigate={closeMenu}
+        />
       </aside>
+
+      {isMenuOpen && (
+        <div className="fixed inset-0 z-40 lg:hidden">
+          <button
+            aria-label="Close menu"
+            className="absolute inset-0 bg-ink/50"
+            onClick={closeMenu}
+            type="button"
+          />
+          <aside
+            className="absolute inset-y-0 left-0 flex w-[min(248px,86vw)] flex-col bg-nav px-4 py-6 shadow-2xl"
+            id={menuId}
+          >
+            <div className="mb-2 flex justify-end">
+              <Button
+                aria-label="Close menu"
+                className="border-white/10 bg-white/5 text-white hover:bg-white/10 hover:text-white"
+                onClick={closeMenu}
+                variant="icon"
+              >
+                <Icon name="close" size={17} />
+              </Button>
+            </div>
+            <SidebarNav
+              activeScreen={activeScreen}
+              hrefFor={hrefFor}
+              onNavigate={closeMenu}
+            />
+          </aside>
+        </div>
+      )}
 
       <div className="min-w-0 lg:col-start-2">
         <header className="sticky top-0 z-20 border-b border-line bg-canvas/95 backdrop-blur">
-          <div className="mx-auto flex h-[72px] max-w-[1360px] items-center justify-between px-4 sm:px-6 lg:px-8">
-            <div className="lg:hidden">
+          <div className="mx-auto flex h-[72px] max-w-[1360px] items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
+            <div className="flex min-w-0 items-center gap-2 lg:hidden">
+              <Button
+                aria-controls={menuId}
+                aria-expanded={isMenuOpen}
+                aria-label="Open menu"
+                onClick={() => setIsMenuOpen(true)}
+                variant="icon"
+              >
+                <Icon name="menu" size={18} />
+              </Button>
               <SwaprLogo onLight />
             </div>
             <div className="hidden lg:block">
@@ -154,14 +243,8 @@ export function AppShell() {
               </h1>
               <p className="mt-0.5 text-xs text-ink-soft">{copy.description}</p>
             </div>
-            <div className="flex items-center gap-3">
-              <div className="lg:hidden">
-                <ThemeToggle />
-              </div>
-              <div
-                aria-label="John Doe"
-                className="flex items-center gap-2.5"
-              >
+            <div className="flex shrink-0 items-center gap-3">
+              <div aria-label="John Doe" className="flex items-center gap-2.5">
                 <div
                   aria-hidden="true"
                   className="grid size-9 place-items-center rounded-full bg-blue text-[11px] font-semibold text-white"
@@ -177,60 +260,26 @@ export function AppShell() {
           </div>
         </header>
 
-        <main className="mx-auto max-w-[1360px] px-4 pt-6 pb-28 sm:px-6 lg:px-8 lg:pt-8 lg:pb-10">
+        <main className="mx-auto max-w-[1360px] px-4 pt-6 pb-10 sm:px-6 lg:px-8 lg:pt-8">
           <div className="mb-6 lg:hidden">
             <h1 className="text-2xl font-semibold tracking-[-0.035em] text-ink">
               {copy.title}
             </h1>
             <p className="mt-1 text-sm text-ink-soft">{copy.description}</p>
           </div>
-
-          {activeScreen === "overview" && (
-            <div className="space-y-6">
-              <WalletOverview
-                onStartConversion={() => navigateToScreen("convert")}
-              />
-              <div className="space-y-6">
-                <LiveRates
-                  isPreview
-                  onViewAll={() => navigateToScreen("rates")}
-                />
-                <ConversionHistory
-                  isPreview
-                  onViewAll={() => navigateToScreen("transactions")}
-                />
-              </div>
-            </div>
-          )}
-          {activeScreen === "convert" && <ConvertForm />}
-          {activeScreen === "rates" && <LiveRates />}
-          {activeScreen === "transactions" && <ConversionHistory />}
+          {children}
         </main>
       </div>
-
-      <nav
-        aria-label="Mobile navigation"
-        className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 border-t border-line bg-surface px-2 pb-[max(8px,env(safe-area-inset-bottom))] lg:hidden"
-      >
-        {NAV_ITEMS.map((item) => (
-          <button
-            className={classNames(
-              "flex min-h-16 flex-col items-center justify-center gap-1 text-[10px] font-medium transition-colors duration-200 ease-out",
-              activeScreen === item.id ? "text-blue" : "text-muted hover:text-blue",
-            )}
-            key={item.id}
-            onClick={() => navigateToScreen(item.id)}
-            type="button"
-          >
-            <Icon
-              name={item.icon}
-              size={20}
-              strokeWidth={activeScreen === item.id ? 2.2 : 1.8}
-            />
-            {item.label === "Transactions" ? "Activity" : item.label}
-          </button>
-        ))}
-      </nav>
     </div>
   );
+}
+
+export function useAppHref() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const debug = searchParams.get("debug");
+
+  return (path: string) => {
+    router.push(hrefWithDebug(path, debug));
+  };
 }

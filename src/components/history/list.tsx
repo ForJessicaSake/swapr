@@ -7,7 +7,7 @@ import { useConversions } from "@/hooks/use-conversions";
 import type { Conversion } from "@/types/conversions";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
-import { formatMoney } from "@/utils/format";
+import { formatMoney, formatRate } from "@/utils/format";
 
 function formatActivityDate(isoDate: string, isPreview = false) {
   return new Intl.DateTimeFormat(undefined, {
@@ -95,6 +95,9 @@ export function ConversionHistory({
                   </p>
                   <p className="mt-1 truncate text-[11px] text-muted">
                     {formatActivityDate(conversion.createdAt, isPreview)}
+                    {" · "}
+                    1 {conversion.sellCurrency} = {formatRate(conversion.rate)}{" "}
+                    {conversion.buyCurrency}
                   </p>
                 </div>
               </div>
